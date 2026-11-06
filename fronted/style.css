@@ -1,0 +1,281 @@
+/* --- SISTEMA DE DISEÑO (App de Mapas Premium) --- */
+:root {
+    --bg-app: #e5e5ea;        /* Gris de fondo mientras carga el mapa */
+    --surface: rgba(255, 255, 255, 0.92); /* Blanco translúcido para efecto cristal */
+    --text-primary: #1d1d1f;
+    --text-secondary: #86868b;
+    --border-color: rgba(0, 0, 0, 0.08); 
+    --accent: #E30052;        /* Color de pines y alertas */
+    --radius-panel: 24px;     /* Esquinas muy redondeadas tipo Waze/Maps */
+    --radius-card: 16px;
+    --shadow-float: 0 16px 40px rgba(0,0,0,0.15); /* Sombra pesada de elevación */
+}
+
+/* --- RESET BÁSICO --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* --- LAYOUT PRINCIPAL (El mapa es absoluto) --- */
+.dashboard-container {
+    position: relative;
+    height: 100vh;
+    width: 100vw;
+}
+
+.map-section {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* El mapa se va al fondo */
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+/* --- PANEL LATERAL FLOTANTE (Estilo Google Maps Desktop) --- */
+.sidebar {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    width: 380px;
+    max-height: calc(100vh - 48px);
+    background-color: var(--surface);
+    backdrop-filter: blur(12px); /* Desenfoca el mapa detrás del panel */
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-panel);
+    padding: 32px 24px;
+    z-index: 1000; /* Flota sobre el mapa */
+    box-shadow: var(--shadow-float);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+/* Tipografía del Encabezado */
+.brand h2 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+    margin-bottom: 4px;
+}
+
+.brand .subtitle {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    font-weight: 400;
+    margin-bottom: 32px;
+}
+
+/* --- TARJETAS DE INDICADORES (KPIs) --- */
+.kpi-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.kpi-card {
+    background-color: #ffffff; /* Tarjetas sólidas sobre el fondo translúcido */
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.kpi-card h3 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.kpi-card p {
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+}
+
+/* Tarjeta Destacada (NIF C-9) */
+.kpi-card.alert {
+    border-left: 4px solid var(--accent);
+}
+
+.kpi-card.alert p {
+    color: var(--accent);
+}
+
+/* Reubicamos los controles por defecto de Leaflet (zoom) a la derecha */
+.leaflet-left .leaflet-control {
+    margin-left: 420px !important; 
+}
+
+/* --- SISTEMA DE PESTAÑAS Y VISTAS --- */
+.tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    background: #f5f5f7;
+    padding: 4px;
+    border-radius: 12px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    background: var(--surface);
+    color: var(--text-primary);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.view-content {
+    display: none;
+    flex-direction: column;
+}
+
+.view-content.active {
+    display: flex;
+}
+
+/* --- CLASE PARA CONTRAER EL PANEL EN MODO MAPA --- */
+.sidebar {
+    transition: width 0.3s ease;
+    width: 450px; /* Ancho extendido para leer los datos */
+}
+
+.sidebar.compact {
+    width: 340px; /* Ancho contraído para ver el mapa */
+}
+
+/* --- ESTILOS DEL REPORTE CORPORATIVO --- */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.kpi-mini {
+    background: #fbfbfd;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.kpi-mini h4 {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.kpi-mini p {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.danger { color: var(--accent) !important; }
+.success { color: #34c759 !important; }
+
+.section-title {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tabla-alcaldias {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+#lista-alcaldias {
+    list-style: none;
+}
+
+#lista-alcaldias li {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.85rem;
+}
+
+.alc-nombre { font-weight: 600; color: var(--text-primary); }
+.alc-datos { text-align: right; }
+.alc-costo { color: var(--text-secondary); font-size: 0.75rem; display: block; }
+
+
+/* --- ESTILOS DE GRÁFICAS Y FILTROS --- */
+.chart-container {
+    width: 100%;
+    height: 180px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+}
+
+#lista-alcaldias li {
+    cursor: pointer; /* Cursor de "manita" para indicar que es clickeable */
+    transition: background 0.2s, padding-left 0.2s;
+    border-radius: 6px;
+    padding: 12px 8px;
+}
+
+/* Efecto Hover al pasar el mouse por la lista */
+#lista-alcaldias li:hover {
+    background: #f0f0f5;
+    padding-left: 12px; 
+    border-left: 3px solid var(--accent);
+}
+
+.btn-limpiar {
+    width: 100%;
+    padding: 10px;
+    background: var(--text-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: none; /* Oculto hasta que el usuario filtre */
+    transition: background 0.2s;
+}
+
+.btn-limpiar:hover {
+    background: var(--accent);
+}

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIPA - Inteligencia Operativa de Bacheo</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Tu CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        
+        <!-- PANEL LATERAL (Sidebar) -->
+        <aside class="sidebar" id="panel-lateral">
+            <div class="brand">
+                <h2>SIPA CDMX</h2>
+                <p class="subtitle">Inteligencia Operativa de Bacheo</p>
+            </div>
+
+            <!-- Controles de Pestañas -->
+            <div class="tabs">
+                <button class="tab-btn active" id="btn-resumen">📊 Resumen Ejecutivo</button>
+                <button class="tab-btn" id="btn-mapa">🗺️ Vista Mapa</button>
+            </div>
+
+            <!-- VISTA 1: Resumen Ejecutivo -->
+            <div id="vista-resumen" class="view-content active">
+                <div class="kpi-grid">
+                    <div class="kpi-mini">
+                        <h4>Alcaldía Crítica</h4>
+                        <p id="kpi-peor" class="danger">...</p>
+                    </div>
+                    <div class="kpi-mini">
+                        <h4>Menos Afectada</h4>
+                        <p id="kpi-mejor" class="success">...</p>
+                    </div>
+                </div>
+
+                <!-- Botón para quitar el filtro (Oculto por defecto) -->
+                <button id="btn-limpiar" class="btn-limpiar">✖ Quitar Filtro de Alcaldía</button>
+
+                <!-- Contenedor de la nueva Gráfica Chart.js -->
+                <div class="chart-container">
+                    <canvas id="graficaAlcaldias"></canvas>
+                </div>
+
+                <h3 class="section-title">Desglose (Clic para filtrar mapa)</h3>
+                <div class="tabla-alcaldias">
+                    <ul id="lista-alcaldias"></ul>
+                </div>
+            </div>
+
+            <!-- VISTA 2: Vista Mapa -->
+            <div id="vista-mapa" class="view-content">
+                <div class="kpi-container">
+                    <div class="kpi-card">
+                        <h3>Folios Críticos Mostrados</h3>
+                        <p id="kpi-total">Cargando...</p>
+                    </div>
+                    <div class="kpi-card">
+                        <h3>Presupuesto APU (Filtro)</h3>
+                        <p id="kpi-costo">Cargando...</p>
+                    </div>
+                    <div class="kpi-card alert">
+                        <h3>Pasivo NIF C-9 (Filtro)</h3>
+                        <p id="kpi-riesgo">Cargando...</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CONTENEDOR DEL MAPA -->
+        <main class="map-section">
+            <div id="map"></div>
+        </main>
+        
+    </div>
+
+    <!-- LIBRERÍAS JS (Leaflet, PapaParse y Chart.js) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Tu Lógica -->
+    <script src="app.js"></script>
+</body>
+</html>

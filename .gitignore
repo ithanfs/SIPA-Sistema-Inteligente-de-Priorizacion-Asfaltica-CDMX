@@ -1,0 +1,6 @@
+# Entornos y archivos pesados
+sipa_env/
+__pycache__/
+.ipynb_checkpoints/
+00_locatel0311-completa.csv
+sipa_etl_procesado.csv

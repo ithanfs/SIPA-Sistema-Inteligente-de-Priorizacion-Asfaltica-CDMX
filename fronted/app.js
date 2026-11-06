@@ -8,34 +8,56 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_L
 
 // Variables Globales
 let datosGlobales = [];
-let capaBaches = L.featureGroup().addTo(map); // Capa agrupable para hacer zoom automático
-let miGrafica = null; // Instancia de Chart.js
+let miGrafica = null; 
 const formatoMoneda = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
 
-// 1. Cargar datos una sola vez
+// MAGIA DE CLUSTERS: Inicializamos el agrupador
+let capaBaches = L.markerClusterGroup({
+    maxClusterRadius: 60,
+    disableClusteringAtZoom: 16,
+    spiderfyOnMaxZoom: true 
+}).addTo(map);
+
+// Lógica de Clasificación, Colores y Traducción al Español
+function obtenerDetallesVia(tipoVia) {
+    if (!tipoVia) return { color: "#8E8E93", label: "No registrado" };
+    const tipo = String(tipoVia).toLowerCase().trim();
+    
+    // 1. Autopistas y Vías Primarias (Guinda)
+    if (tipo.includes('motorway') || tipo.includes('trunk') || tipo.includes('primary')) {
+        return { color: "#E30052", label: "Vía Primaria / Eje" };
+    } 
+    // 2. Vías Secundarias y Terciarias (Naranja)
+    else if (tipo.includes('secondary') || tipo.includes('tertiary')) {
+        return { color: "#FF9500", label: "Vía Secundaria / Avenida" };
+    } 
+    // 3. Calles Residenciales y Locales (Azul)
+    else {
+        return { color: "#007AFF", label: "Calle Residencial / Local" };
+    }
+}
+
+// Cargar datos
 Papa.parse("sipa_final_completo.csv", {
     download: true, header: true, dynamicTyping: true,
     complete: function(results) {
         datosGlobales = results.data.filter(row => row.latitud && row.longitud);
-        actualizarDashboard(); // Dibuja todo por primera vez sin filtros
+        actualizarDashboard(); 
     }
 });
 
-// 2. Función Maestra Dinámica (Se ejecuta cada que filtras)
 function actualizarDashboard(filtroAlcaldia = null) {
-    capaBaches.clearLayers(); // Limpiamos el mapa
+    capaBaches.clearLayers(); 
     
-    // Si hay filtro, extraemos solo esa alcaldía. Si no, usamos todo.
     let datosFiltrados = filtroAlcaldia ? 
         datosGlobales.filter(row => row.alcaldia === filtroAlcaldia) : datosGlobales;
 
-    // Mostrar/Ocultar el botón de limpiar filtro
     document.getElementById('btn-limpiar').style.display = filtroAlcaldia ? 'block' : 'none';
 
     let totalBaches = 0, costoTotal = 0, riesgoTotal = 0;
     let statsAlcaldias = {};
+    let marcadoresTemporales = []; 
 
-    // Procesar Matemáticas
     datosFiltrados.forEach(row => {
         totalBaches++;
         costoTotal += (row.costo_reparacion || 0);
@@ -46,42 +68,51 @@ function actualizarDashboard(filtroAlcaldia = null) {
         statsAlcaldias[alc].cantidad++;
         statsAlcaldias[alc].costo += (row.costo_reparacion || 0);
 
-        // Dibujar marcador
+        // Obtenemos color y etiqueta traducida al español
+        let detalles = obtenerDetallesVia(row.tipo_via);
+
         let marker = L.circleMarker([row.latitud, row.longitud], {
-            radius: filtroAlcaldia ? 4 : 3, // Puntos más grandes si está filtrado
-            fillColor: "#E30052", color: "transparent", fillOpacity: 0.6
-        }).bindPopup(`<strong>Folio:</strong> ${row.id_folio}<br><strong>Costo:</strong> ${formatoMoneda.format(row.costo_reparacion)}`);
+            radius: filtroAlcaldia ? 6 : 5, 
+            fillColor: detalles.color, 
+            color: "transparent", 
+            fillOpacity: 0.9 
+        }).bindPopup(`
+            <div style="font-family: Inter;">
+                <strong>Folio:</strong> ${row.id_folio}<br>
+                <strong>Vía:</strong> <span style="color:${detalles.color}; font-weight:bold;">${detalles.label}</span><br>
+                <strong>Costo APU:</strong> ${formatoMoneda.format(row.costo_reparacion)}
+            </div>
+        `);
         
-        capaBaches.addLayer(marker);
+        marcadoresTemporales.push(marker);
     });
 
-    // Zoom Automático en el Mapa
-    if (filtroAlcaldia && capaBaches.getLayers().length > 0) {
-        map.fitBounds(capaBaches.getBounds(), { padding: [50, 50] }); // Vuela a la alcaldía
+    capaBaches.addLayers(marcadoresTemporales);
+
+    if (filtroAlcaldia && marcadoresTemporales.length > 0) {
+        map.fitBounds(capaBaches.getBounds(), { padding: [50, 50] }); 
     } else {
-        map.setView([19.4326, -99.1332], 11); // Regresa a vista CDMX completa
+        map.setView([19.4326, -99.1332], 11); 
     }
 
-    // Actualizar KPIs de la Pestaña Mapa
     document.getElementById('kpi-total').innerText = totalBaches.toLocaleString('es-MX');
     document.getElementById('kpi-costo').innerText = formatoMoneda.format(costoTotal);
     document.getElementById('kpi-riesgo').innerText = formatoMoneda.format(riesgoTotal);
 
-    // Actualizar Lista Interactiva y Gráfica (Solo si NO hay filtro activo)
     if (!filtroAlcaldia) {
         let arrayAlcaldias = Object.keys(statsAlcaldias).map(nombre => {
             return { nombre: nombre, ...statsAlcaldias[nombre] };
         });
         arrayAlcaldias.sort((a, b) => b.cantidad - a.cantidad);
 
-        // Extremos
-        document.getElementById('kpi-peor').innerText = arrayAlcaldias[0].nombre;
-        document.getElementById('kpi-mejor').innerText = arrayAlcaldias[arrayAlcaldias.length - 1].nombre;
+        if(arrayAlcaldias.length > 0) {
+            document.getElementById('kpi-peor').innerText = arrayAlcaldias[0].nombre;
+            document.getElementById('kpi-mejor').innerText = arrayAlcaldias[arrayAlcaldias.length - 1].nombre;
+        }
 
-        // Construir Lista Interactiva
         let listaHTML = "";
         arrayAlcaldias.forEach(alc => {
-            let porcentaje = ((alc.costo / costoTotal) * 100).toFixed(1); // Cálculo % Presupuesto
+            let porcentaje = ((alc.costo / costoTotal) * 100).toFixed(1); 
             listaHTML += `
                 <li onclick="actualizarDashboard('${alc.nombre}')">
                     <span class="alc-nombre">${alc.nombre}</span>
@@ -94,18 +125,13 @@ function actualizarDashboard(filtroAlcaldia = null) {
         });
         document.getElementById('lista-alcaldias').innerHTML = listaHTML;
 
-        // Construir Gráfica Chart.js (Doughnut)
-        actualizarGrafica(arrayAlcaldias.slice(0, 5)); // Mandamos el Top 5 a la gráfica
+        actualizarGrafica(arrayAlcaldias.slice(0, 5)); 
     }
 }
 
-// 3. Función para la Gráfica de Pastel (Top 5 Alcaldías Críticas)
 function actualizarGrafica(top5) {
     const ctx = document.getElementById('graficaAlcaldias').getContext('2d');
-    
-    // Si ya existe una gráfica, la destruimos para redibujarla limpia
     if (miGrafica) { miGrafica.destroy(); }
-
     miGrafica = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -117,17 +143,13 @@ function actualizarGrafica(top5) {
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } }
-            },
-            cutout: '65%' // Hace el agujero del centro más delgado
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } },
+            cutout: '65%' 
         }
     });
 }
 
-// 4. Eventos de los Botones
 document.getElementById('btn-limpiar').addEventListener('click', () => actualizarDashboard(null));
 
 const btnResumen = document.getElementById('btn-resumen');

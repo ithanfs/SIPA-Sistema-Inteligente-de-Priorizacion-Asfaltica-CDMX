@@ -279,3 +279,20 @@ body {
 .btn-limpiar:hover {
     background: var(--accent);
 }
+
+/* --- ESTILOS DE CLUSTERS (Agrupación de Baches) --- */
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large {
+    background-color: rgba(227, 0, 82, 0.4) !important; /* Aro exterior semi-transparente guinda */
+}
+
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div {
+    background-color: rgba(227, 0, 82, 0.9) !important; /* Círculo central guinda sólido */
+    color: white !important;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    border: 2px solid white;
+}

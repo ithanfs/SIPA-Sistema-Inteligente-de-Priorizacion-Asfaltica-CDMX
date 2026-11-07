@@ -9,43 +9,56 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_L
 // Variables Globales
 let datosGlobales = [];
 let miGrafica = null; 
+let marcadoresDict = {}; 
 const formatoMoneda = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
 
-// Inicializamos el agrupador de Clusters
+// Variables para el resalte
+let marcadorResaltado = null;
+let opcionesOriginales = null;
+
 let capaBaches = L.markerClusterGroup({
     maxClusterRadius: 60,
     disableClusteringAtZoom: 16,
     spiderfyOnMaxZoom: true 
 }).addTo(map);
 
-// --- MOTOR ALGORÍTMICO: CÁLCULO DEL IPU ---
 function calcularIPU(aforo, volumen, tipoVia) {
-    // Normalización: Evitamos que valores atípicamente gigantes rompan la escala
     let aforoNorm = Math.min((aforo || 0) / 20000, 1); 
     let volNorm = Math.min((volumen || 0) / 10, 1);
-
-    // Puntuación por Tipo de Vía (OpenStreetMap)
-    let viaScore = 0.2; // Base para calles locales
+    let viaScore = 0.2; 
     const tipo = String(tipoVia).toLowerCase().trim();
-    if (tipo.includes('motorway') || tipo.includes('trunk') || tipo.includes('primary')) {
-        viaScore = 1.0;
-    } else if (tipo.includes('secondary') || tipo.includes('tertiary')) {
-        viaScore = 0.6;
-    }
-
-    // Fórmula IPU: 40% Vía, 35% Aforo, 25% Volumen
+    if (tipo.includes('motorway') || tipo.includes('trunk') || tipo.includes('primary')) viaScore = 1.0;
+    else if (tipo.includes('secondary') || tipo.includes('tertiary')) viaScore = 0.6;
     let puntaje = (viaScore * 0.40) + (aforoNorm * 0.35) + (volNorm * 0.25);
     return Math.round(puntaje * 100);
 }
 
-// --- SEMÁFORO INTELIGENTE ---
 function obtenerSemaforoIPU(ipu) {
     if (ipu >= 70) return { color: "#E30052", etiqueta: "Prioridad Crítica", icono: "🔴" };
     if (ipu >= 40) return { color: "#FF9500", etiqueta: "Prioridad Media", icono: "🟠" };
     return { color: "#007AFF", etiqueta: "Prioridad Baja", icono: "🔵" };
 }
 
-// Cargar datos
+// --- LEYENDA NATIVA ---
+const leyendaIPU = L.control({ position: 'bottomright' });
+leyendaIPU.onAdd = function (map) {
+    let div = L.DomUtil.create('div', 'info legend');
+    L.DomEvent.disableClickPropagation(div);
+    div.style.backgroundColor = "rgba(255, 255, 255, 0.95)";
+    div.style.padding = "15px";
+    div.style.borderRadius = "12px";
+    div.style.boxShadow = "0 4px 15px rgba(0,0,0,0.15)";
+    div.style.fontFamily = "'Inter', sans-serif";
+    div.innerHTML = `
+        <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 700; color: #111;">Prioridad IPU</h4>
+        <div style="display: flex; align-items: center; margin-bottom: 10px;"><span style="background: #E30052; width: 16px; height: 16px; border-radius: 50%; margin-right: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;"></span><span style="font-size: 13px; color: #444; font-weight: 500;">Crítica (≥70)</span></div>
+        <div style="display: flex; align-items: center; margin-bottom: 10px;"><span style="background: #FF9500; width: 16px; height: 16px; border-radius: 50%; margin-right: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;"></span><span style="font-size: 13px; color: #444; font-weight: 500;">Media (40 - 69)</span></div>
+        <div style="display: flex; align-items: center;"><span style="background: #007AFF; width: 16px; height: 16px; border-radius: 50%; margin-right: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;"></span><span style="font-size: 13px; color: #444; font-weight: 500;">Baja (< 40)</span></div>
+    `;
+    return div;
+};
+leyendaIPU.addTo(map);
+
 Papa.parse("sipa_final_completo.csv", {
     download: true, header: true, dynamicTyping: true,
     complete: function(results) {
@@ -56,6 +69,7 @@ Papa.parse("sipa_final_completo.csv", {
 
 function actualizarDashboard(filtroAlcaldia = null) {
     capaBaches.clearLayers(); 
+    marcadoresDict = {}; 
     
     let datosFiltrados = filtroAlcaldia ? 
         datosGlobales.filter(row => row.alcaldia === filtroAlcaldia) : datosGlobales;
@@ -76,65 +90,66 @@ function actualizarDashboard(filtroAlcaldia = null) {
         statsAlcaldias[alc].cantidad++;
         statsAlcaldias[alc].costo += (row.costo_reparacion || 0);
 
-        // APLICAMOS EL CÁLCULO IPU A CADA BACHE
-        let ipuCalculado = calcularIPU(row.aforo_estimado, row.volumen_m3, row.tipo_via);
-        let semaforo = obtenerSemaforoIPU(ipuCalculado);
+        row.ipuCalculado = calcularIPU(row.aforo_estimado, row.volumen_m3, row.tipo_via);
+        let semaforo = obtenerSemaforoIPU(row.ipuCalculado);
 
         let marker = L.circleMarker([row.latitud, row.longitud], {
-            radius: filtroAlcaldia ? 6 : 5, 
-            fillColor: semaforo.color, 
-            color: "transparent", 
-            fillOpacity: 0.9 
+            radius: filtroAlcaldia ? 6 : 5, fillColor: semaforo.color, color: "transparent", fillOpacity: 0.9 
         }).bindPopup(`
             <div style="font-family: Inter;">
                 <strong>Folio:</strong> ${row.id_folio}<br>
                 <strong>SIPA:</strong> <span style="color:${semaforo.color}; font-weight:bold;">${semaforo.icono} ${semaforo.etiqueta}</span><br>
-                <strong>IPU:</strong> ${ipuCalculado} / 100<br>
+                <strong>IPU:</strong> ${row.ipuCalculado} / 100<br>
                 <strong>Costo APU:</strong> ${formatoMoneda.format(row.costo_reparacion)}
             </div>
         `);
         
+        marcadoresDict[row.id_folio] = marker;
         marcadoresTemporales.push(marker);
     });
 
     capaBaches.addLayers(marcadoresTemporales);
-
-    if (filtroAlcaldia && marcadoresTemporales.length > 0) {
-        map.fitBounds(capaBaches.getBounds(), { padding: [50, 50] }); 
-    } else {
-        map.setView([19.4326, -99.1332], 11); 
-    }
+    if (filtroAlcaldia && marcadoresTemporales.length > 0) map.fitBounds(capaBaches.getBounds(), { padding: [50, 50] }); 
+    else map.setView([19.4326, -99.1332], 11); 
 
     document.getElementById('kpi-total').innerText = totalBaches.toLocaleString('es-MX');
     document.getElementById('kpi-costo').innerText = formatoMoneda.format(costoTotal);
     document.getElementById('kpi-riesgo').innerText = formatoMoneda.format(riesgoTotal);
 
-    if (!filtroAlcaldia) {
-        let arrayAlcaldias = Object.keys(statsAlcaldias).map(nombre => {
-            return { nombre: nombre, ...statsAlcaldias[nombre] };
-        });
-        arrayAlcaldias.sort((a, b) => b.cantidad - a.cantidad);
+    let top20 = [...datosFiltrados].sort((a, b) => b.ipuCalculado - a.ipuCalculado).slice(0, 20);
+    let top20HTML = "";
+    top20.forEach((row, index) => {
+        let claseColor = row.ipuCalculado >= 70 ? 'ipu-critica' : (row.ipuCalculado >= 40 ? 'ipu-media' : 'ipu-baja');
+        // SE AGREGARON COMILLAS SIMPLES ALREDEDOR DEL FOLIO PARA EVITAR ERRORES JS
+        top20HTML += `
+            <div class="bache-card" onclick="volarHaciaBache(${row.latitud}, ${row.longitud}, '${row.id_folio}')">
+                <div class="bache-header">
+                    <span class="bache-folio">#${index + 1} | Folio: ${row.id_folio}</span>
+                    <span class="bache-ipu ${claseColor}">${row.ipuCalculado} IPU</span>
+                </div>
+                <div class="bache-detalle">
+                    📍 ${row.colonia || 'Sin colonia'} (${row.alcaldia})<br>
+                    🚗 Aforo: ${row.aforo_estimado || 0} | 💰 Costo: ${formatoMoneda.format(row.costo_reparacion)}
+                </div>
+            </div>
+        `;
+    });
+    const listaTop20Contenedor = document.getElementById('lista-top20');
+    if(listaTop20Contenedor) listaTop20Contenedor.innerHTML = top20HTML;
 
+    if (!filtroAlcaldia) {
+        let arrayAlcaldias = Object.keys(statsAlcaldias).map(nombre => ({ nombre: nombre, ...statsAlcaldias[nombre] }));
+        arrayAlcaldias.sort((a, b) => b.cantidad - a.cantidad);
         if(arrayAlcaldias.length > 0) {
             document.getElementById('kpi-peor').innerText = arrayAlcaldias[0].nombre;
             document.getElementById('kpi-mejor').innerText = arrayAlcaldias[arrayAlcaldias.length - 1].nombre;
         }
-
         let listaHTML = "";
         arrayAlcaldias.forEach(alc => {
             let porcentaje = ((alc.costo / costoTotal) * 100).toFixed(1); 
-            listaHTML += `
-                <li onclick="actualizarDashboard('${alc.nombre}')">
-                    <span class="alc-nombre">${alc.nombre}</span>
-                    <span class="alc-datos">
-                        <strong>${alc.cantidad.toLocaleString('es-MX')} (${porcentaje}%)</strong>
-                        <span class="alc-costo">${formatoMoneda.format(alc.costo)}</span>
-                    </span>
-                </li>
-            `;
+            listaHTML += `<li onclick="actualizarDashboard('${alc.nombre}')"><span class="alc-nombre">${alc.nombre}</span><span class="alc-datos"><strong>${alc.cantidad.toLocaleString('es-MX')} (${porcentaje}%)</strong><span class="alc-costo">${formatoMoneda.format(alc.costo)}</span></span></li>`;
         });
         document.getElementById('lista-alcaldias').innerHTML = listaHTML;
-
         actualizarGrafica(arrayAlcaldias.slice(0, 5)); 
     }
 }
@@ -144,78 +159,92 @@ function actualizarGrafica(top5) {
     if (miGrafica) { miGrafica.destroy(); }
     miGrafica = new Chart(ctx, {
         type: 'doughnut',
-        data: {
-            labels: top5.map(a => a.nombre),
-            datasets: [{
-                data: top5.map(a => a.cantidad),
-                backgroundColor: ['#E30052', '#ff3377', '#ff6699', '#ff99bb', '#ffccdd'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } },
-            cutout: '65%' 
-        }
+        data: { labels: top5.map(a => a.nombre), datasets: [{ data: top5.map(a => a.cantidad), backgroundColor: ['#E30052', '#ff3377', '#ff6699', '#ff99bb', '#ffccdd'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } }, cutout: '65%' }
     });
 }
+
+// --- FUNCIÓN A PRUEBA DE FALLOS PARA RESALTAR EL BACHE ---
+window.volarHaciaBache = function(lat, lng, folio) {
+    map.flyTo([lat, lng], 18, { animate: true, duration: 1.5 });
+    
+    setTimeout(() => {
+        let marker = marcadoresDict[folio];
+        if (marker) {
+            
+            // Función interna que hace el trabajo sucio del pintado
+            const aplicarEstilos = () => {
+                if (marcadorResaltado) {
+                    marcadorResaltado.setStyle(opcionesOriginales);
+                }
+                
+                opcionesOriginales = {
+                    radius: marker.options.radius,
+                    fillColor: marker.options.fillColor,
+                    color: marker.options.color,
+                    weight: marker.options.weight,
+                    fillOpacity: marker.options.fillOpacity
+                };
+                
+                marker.setStyle({
+                    radius: 12,
+                    color: '#000000',
+                    weight: 4,
+                    fillColor: '#FFEA00',
+                    fillOpacity: 1
+                });
+                
+                marcadorResaltado = marker;
+                marker.openPopup();
+            };
+
+            // Obligamos a Leaflet a mostrar el punto aunque esté en un cluster, y luego lo pintamos
+            capaBaches.zoomToShowLayer(marker, function () {
+                aplicarEstilos();
+            });
+            
+            // Si ya estaba visible y el cluster ignoró el comando anterior, lo forzamos igual
+            if (map.hasLayer(marker)) {
+                aplicarEstilos();
+            }
+        }
+    }, 1600);
+}
+
+map.on('popupclose', function() {
+    if (marcadorResaltado) {
+        marcadorResaltado.setStyle(opcionesOriginales);
+        marcadorResaltado = null;
+    }
+});
 
 document.getElementById('btn-limpiar').addEventListener('click', () => actualizarDashboard(null));
 
 const btnResumen = document.getElementById('btn-resumen');
 const btnMapa = document.getElementById('btn-mapa');
+const btnTop20 = document.getElementById('btn-top20'); 
+
 const vistaResumen = document.getElementById('vista-resumen');
 const vistaMapa = document.getElementById('vista-mapa');
+const vistaTop20 = document.getElementById('vista-top20'); 
 const panelLateral = document.getElementById('panel-lateral');
 
-btnResumen.addEventListener('click', () => {
-    btnResumen.classList.add('active'); btnMapa.classList.remove('active');
-    vistaResumen.classList.add('active'); vistaMapa.classList.remove('active');
-    panelLateral.classList.remove('compact');
-});
-
-btnMapa.addEventListener('click', () => {
-    btnMapa.classList.add('active'); btnResumen.classList.remove('active');
-    vistaMapa.classList.add('active'); vistaResumen.classList.remove('active');
-    panelLateral.classList.add('compact');
-});
-
-// --- LEYENDA NATIVA DE LEAFLET (SEGURO CONTRA BLOQUEOS) ---
-const leyendaIPU = L.control({ position: 'bottomright' });
-
-leyendaIPU.onAdd = function (map) {
-    let div = L.DomUtil.create('div', 'info legend');
+function cambiarPestana(botonActivo, vistaActiva, esMapa) {
+    if(btnResumen) btnResumen.classList.remove('active');
+    if(btnMapa) btnMapa.classList.remove('active');
+    if(btnTop20) btnTop20.classList.remove('active');
     
-    // Evita que hacer clic en la leyenda mueva el mapa por accidente
-    L.DomEvent.disableClickPropagation(div);
-    
-    // Estilos inyectados con JavaScript (sin necesidad de tocar style.css)
-    div.style.backgroundColor = "rgba(255, 255, 255, 0.95)";
-    div.style.padding = "15px";
-    div.style.borderRadius = "12px";
-    div.style.boxShadow = "0 4px 15px rgba(0,0,0,0.15)";
-    div.style.fontFamily = "'Inter', sans-serif";
-    div.style.border = "1px solid rgba(0,0,0,0.05)";
-    
-    div.innerHTML = `
-        <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 700; color: #111;">Prioridad IPU</h4>
-        
-        <div style="display: flex; align-items: center; margin-bottom: 10px;">
-            <span style="background: #E30052; width: 16px; height: 16px; border-radius: 50%; margin-right: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;"></span>
-            <span style="font-size: 13px; color: #444; font-weight: 500;">Crítica (≥70)</span>
-        </div>
-        
-        <div style="display: flex; align-items: center; margin-bottom: 10px;">
-            <span style="background: #FF9500; width: 16px; height: 16px; border-radius: 50%; margin-right: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;"></span>
-            <span style="font-size: 13px; color: #444; font-weight: 500;">Media (40 - 69)</span>
-        </div>
-        
-        <div style="display: flex; align-items: center;">
-            <span style="background: #007AFF; width: 16px; height: 16px; border-radius: 50%; margin-right: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;"></span>
-            <span style="font-size: 13px; color: #444; font-weight: 500;">Baja (< 40)</span>
-        </div>
-    `;
-    return div;
-};
+    if(vistaResumen) vistaResumen.classList.remove('active');
+    if(vistaMapa) vistaMapa.classList.remove('active');
+    if(vistaTop20) vistaTop20.classList.remove('active'); 
 
-leyendaIPU.addTo(map);
+    if(botonActivo) botonActivo.classList.add('active');
+    if(vistaActiva) vistaActiva.classList.add('active');
+    
+    if(esMapa) panelLateral.classList.add('compact');
+    else panelLateral.classList.remove('compact');
+}
+
+if(btnResumen) btnResumen.addEventListener('click', () => cambiarPestana(btnResumen, vistaResumen, false));
+if(btnMapa) btnMapa.addEventListener('click', () => cambiarPestana(btnMapa, vistaMapa, true));
+if(btnTop20) btnTop20.addEventListener('click', () => cambiarPestana(btnTop20, vistaTop20, false));

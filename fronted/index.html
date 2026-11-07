@@ -3,16 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIPA - Inteligencia Operativa de Bacheo</title>
-
-    <!-- Leaflet CSS -->
+    <title>SIPA CDMX - Inteligencia Operativa</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<!-- Leaflet MarkerCluster CSS (Burbujas) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Tu CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -29,6 +24,7 @@
             <div class="tabs">
                 <button class="tab-btn active" id="btn-resumen">📊 Resumen Ejecutivo</button>
                 <button class="tab-btn" id="btn-mapa">🗺️ Vista Mapa</button>
+                <button class="tab-btn" id="btn-top20">🔥 Top 20</button>
             </div>
 
             <!-- VISTA 1: Resumen Ejecutivo -->
@@ -43,15 +39,9 @@
                         <p id="kpi-mejor" class="success">...</p>
                     </div>
                 </div>
-
-                <!-- Botón para quitar el filtro (Oculto por defecto) -->
-                <button id="btn-limpiar" class="btn-limpiar">✖ Quitar Filtro de Alcaldía</button>
-
-                <!-- Contenedor de la nueva Gráfica Chart.js -->
                 <div class="chart-container">
                     <canvas id="graficaAlcaldias"></canvas>
                 </div>
-
                 <h3 class="section-title">Desglose (Clic para filtrar mapa)</h3>
                 <div class="tabla-alcaldias">
                     <ul id="lista-alcaldias"></ul>
@@ -74,6 +64,13 @@
                         <p id="kpi-riesgo">Cargando...</p>
                     </div>
                 </div>
+                <button id="btn-limpiar" class="btn-limpiar" style="display: none;">❌ Quitar Filtro de Alcaldía</button>
+            </div>
+
+            <!-- VISTA 3: Top 20 -->
+            <div id="vista-top20" class="view-content">
+                <h3 style="font-size: 15px; margin-bottom: 15px; color: #111;">Atención Inmediata Sugerida</h3>
+                <div id="lista-top20"></div>
             </div>
         </aside>
 
@@ -81,18 +78,16 @@
         <main class="map-section">
             <div id="map"></div>
         </main>
-        
+
     </div>
 
-   <!-- LIBRERÍAS JS -->
+    <!-- LIBRERÍAS JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- Leaflet MarkerCluster JS (PEGAR AQUÍ) -->
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- Tu Lógica -->
     <script src="app.js"></script>
 </body>
+</html>

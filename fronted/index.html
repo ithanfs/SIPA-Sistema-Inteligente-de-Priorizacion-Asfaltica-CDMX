@@ -13,21 +13,22 @@
 <body>
     <div class="dashboard-container">
         
-        <!-- PANEL LATERAL (Sidebar) -->
+        <!-- PANEL LATERAL -->
         <aside class="sidebar" id="panel-lateral">
             <div class="brand">
                 <h2>SIPA CDMX</h2>
-                <p class="subtitle">Inteligencia Operativa de Bacheo</p>
+                <p class="subtitle">Sistema Inteligente de Priorización Asfáltica</p>
             </div>
 
             <!-- Controles de Pestañas -->
             <div class="tabs">
-                <button class="tab-btn active" id="btn-resumen">📊 Resumen Ejecutivo</button>
-                <button class="tab-btn" id="btn-mapa">🗺️ Vista Mapa</button>
+                <button class="tab-btn active" id="btn-resumen">📊 Resumen</button>
+                <button class="tab-btn" id="btn-mapa">🗺️ Mapa</button>
                 <button class="tab-btn" id="btn-top20">🔥 Top 20</button>
+                <button class="tab-btn" id="btn-simulador">💰 Simulador</button>
             </div>
 
-            <!-- VISTA 1: Resumen Ejecutivo -->
+            <!-- VISTA 1: Resumen -->
             <div id="vista-resumen" class="view-content active">
                 <div class="kpi-grid">
                     <div class="kpi-mini">
@@ -42,52 +43,76 @@
                 <div class="chart-container">
                     <canvas id="graficaAlcaldias"></canvas>
                 </div>
-                <h3 class="section-title">Desglose (Clic para filtrar mapa)</h3>
+                <h3 class="section-title">Desglose (Clic para filtrar)</h3>
                 <div class="tabla-alcaldias">
                     <ul id="lista-alcaldias"></ul>
                 </div>
             </div>
 
-            <!-- VISTA 2: Vista Mapa -->
+            <!-- VISTA 2: Mapa -->
             <div id="vista-mapa" class="view-content">
                 <div class="kpi-container">
                     <div class="kpi-card">
-                        <h3>Folios Críticos Mostrados</h3>
+                        <h3>Folios Mostrados</h3>
                         <p id="kpi-total">Cargando...</p>
                     </div>
                     <div class="kpi-card">
-                        <h3>Presupuesto APU (Filtro)</h3>
+                        <h3>Presupuesto APU</h3>
                         <p id="kpi-costo">Cargando...</p>
                     </div>
                     <div class="kpi-card alert">
-                        <h3>Pasivo NIF C-9 (Filtro)</h3>
+                        <h3>Pasivo NIF C-9</h3>
                         <p id="kpi-riesgo">Cargando...</p>
                     </div>
                 </div>
-                <button id="btn-limpiar" class="btn-limpiar" style="display: none;">❌ Quitar Filtro de Alcaldía</button>
+                <button id="btn-limpiar" class="btn-limpiar" style="display: none;">❌ Quitar Filtro</button>
             </div>
 
             <!-- VISTA 3: Top 20 -->
             <div id="vista-top20" class="view-content">
-                <h3 style="font-size: 15px; margin-bottom: 15px; color: #111;">Atención Inmediata Sugerida</h3>
+                <h3 style="font-size: 15px; margin-bottom: 15px; color: #111;">Atención Inmediata</h3>
                 <div id="lista-top20"></div>
             </div>
+
+            <!-- VISTA 4: Simulador Presupuestal -->
+            <div id="vista-simulador" class="view-content">
+                <h3 style="font-size: 15px; margin-bottom: 5px; color: #111;">Optimizador de Gasto</h3>
+                <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Ingresa tu presupuesto disponible. El sistema seleccionará los baches más críticos (Mayor IPU) que puedes reparar con ese dinero exacto.</p>
+                
+                <div class="simulador-input-group">
+                    <span class="simulador-currency">$</span>
+                    <input type="number" id="input-presupuesto" placeholder="Ej. 500000" min="1000" step="1000">
+                </div>
+                <button id="btn-calcular-sim" class="btn-calcular">Ejecutar Simulación</button>
+                
+                <div id="resultado-simulador" style="display: none; margin-top: 20px;">
+                    <div class="kpi-grid" style="margin-bottom: 15px;">
+                        <div class="kpi-mini">
+                            <h4>Baches Cubiertos</h4>
+                            <p id="sim-cantidad" style="color: #007AFF;">0</p>
+                        </div>
+                        <div class="kpi-mini">
+                            <h4>Gasto Total</h4>
+                            <p id="sim-gasto" class="success">$0</p>
+                        </div>
+                    </div>
+                    <h4 style="font-size: 13px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Ruta Óptima de Trabajo</h4>
+                    <div id="lista-simulador"></div>
+                </div>
+            </div>
+
         </aside>
 
-        <!-- CONTENEDOR DEL MAPA -->
+        <!-- CONTENEDOR MAPA -->
         <main class="map-section">
             <div id="map"></div>
         </main>
-
     </div>
 
-    <!-- LIBRERÍAS JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Tu Lógica -->
     <script src="app.js"></script>
 </body>
 </html>

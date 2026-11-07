@@ -11,9 +11,9 @@ body { font-family: 'Inter', sans-serif; background-color: #f5f7fa; color: #333;
 .brand h2 { font-size: 24px; font-weight: 700; color: #111; letter-spacing: -0.5px; }
 .brand .subtitle { font-size: 13px; color: #666; margin-top: 4px; }
 
-/* PESTAÑAS */
-.tabs { display: flex; padding: 15px 25px 0 25px; gap: 8px; border-bottom: 1px solid #eee; background: #fafafa; }
-.tab-btn { flex: 1; padding: 10px 5px; border: none; background: transparent; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; color: #666; border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0; transition: all 0.2s ease; }
+/* PESTAÑAS AJUSTADAS A 4 BOTONES */
+.tabs { display: flex; padding: 15px 15px 0 15px; gap: 4px; border-bottom: 1px solid #eee; background: #fafafa; }
+.tab-btn { flex: 1; padding: 10px 2px; border: none; background: transparent; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700; color: #666; border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0; transition: all 0.2s ease; text-align: center;}
 .tab-btn:hover { background: #f0f0f0; color: #333; }
 .tab-btn.active { background: white; color: #111; border-bottom: 2px solid #E30052; border-top: 1px solid #eee; border-left: 1px solid #eee; border-right: 1px solid #eee; }
 
@@ -42,7 +42,7 @@ body { font-family: 'Inter', sans-serif; background-color: #f5f7fa; color: #333;
 .alc-datos strong { display: block; font-size: 13px; color: #111; }
 .alc-costo { font-size: 11px; color: #888; }
 
-/* KPIS VISTA MAPA */
+/* VISTA MAPA */
 .kpi-card { background: white; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px; margin-bottom: 15px; text-align: center; }
 .kpi-card h3 { font-size: 12px; text-transform: uppercase; color: #666; margin-bottom: 8px; }
 .kpi-card p { font-size: 24px; font-weight: 700; color: #111; }
@@ -51,7 +51,7 @@ body { font-family: 'Inter', sans-serif; background-color: #f5f7fa; color: #333;
 .btn-limpiar { width: 100%; padding: 12px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; font-weight: 600; color: #333; margin-top: 10px; }
 .btn-limpiar:hover { background: #e2e6ea; }
 
-/* TARJETAS DEL TOP 20 */
+/* TARJETAS BACHES (TOP 20 Y SIMULADOR) */
 .bache-card { background: white; border: 1px solid #e0e0e0; padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
 .bache-card:hover { border-color: #E30052; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(227, 0, 82, 0.15); }
 .bache-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -61,6 +61,13 @@ body { font-family: 'Inter', sans-serif; background-color: #f5f7fa; color: #333;
 .ipu-media { background: #fff3e0; color: #FF9500; }
 .ipu-baja { background: #e3f2fd; color: #007AFF; }
 .bache-detalle { font-size: 12px; color: #666; line-height: 1.4; }
+
+/* MODULO SIMULADOR */
+.simulador-input-group { display: flex; align-items: center; background: white; border: 1px solid #ccc; border-radius: 6px; padding: 0 10px; margin-bottom: 15px; }
+.simulador-currency { font-size: 16px; font-weight: 600; color: #555; }
+#input-presupuesto { flex: 1; border: none; padding: 12px 10px; font-size: 16px; font-family: 'Inter', sans-serif; outline: none; background: transparent; }
+.btn-calcular { width: 100%; padding: 12px; background: #111; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; transition: background 0.2s; font-size: 14px;}
+.btn-calcular:hover { background: #E30052; }
 
 /* MAPA */
 .map-section { flex: 1; position: relative; }

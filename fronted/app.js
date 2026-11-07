@@ -11,30 +11,38 @@ let datosGlobales = [];
 let miGrafica = null; 
 const formatoMoneda = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
 
-// MAGIA DE CLUSTERS: Inicializamos el agrupador
+// Inicializamos el agrupador de Clusters
 let capaBaches = L.markerClusterGroup({
     maxClusterRadius: 60,
     disableClusteringAtZoom: 16,
     spiderfyOnMaxZoom: true 
 }).addTo(map);
 
-// Lógica de Clasificación, Colores y Traducción al Español
-function obtenerDetallesVia(tipoVia) {
-    if (!tipoVia) return { color: "#8E8E93", label: "No registrado" };
+// --- MOTOR ALGORÍTMICO: CÁLCULO DEL IPU ---
+function calcularIPU(aforo, volumen, tipoVia) {
+    // Normalización: Evitamos que valores atípicamente gigantes rompan la escala
+    let aforoNorm = Math.min((aforo || 0) / 20000, 1); 
+    let volNorm = Math.min((volumen || 0) / 10, 1);
+
+    // Puntuación por Tipo de Vía (OpenStreetMap)
+    let viaScore = 0.2; // Base para calles locales
     const tipo = String(tipoVia).toLowerCase().trim();
-    
-    // 1. Autopistas y Vías Primarias (Guinda)
     if (tipo.includes('motorway') || tipo.includes('trunk') || tipo.includes('primary')) {
-        return { color: "#E30052", label: "Vía Primaria / Eje" };
-    } 
-    // 2. Vías Secundarias y Terciarias (Naranja)
-    else if (tipo.includes('secondary') || tipo.includes('tertiary')) {
-        return { color: "#FF9500", label: "Vía Secundaria / Avenida" };
-    } 
-    // 3. Calles Residenciales y Locales (Azul)
-    else {
-        return { color: "#007AFF", label: "Calle Residencial / Local" };
+        viaScore = 1.0;
+    } else if (tipo.includes('secondary') || tipo.includes('tertiary')) {
+        viaScore = 0.6;
     }
+
+    // Fórmula IPU: 40% Vía, 35% Aforo, 25% Volumen
+    let puntaje = (viaScore * 0.40) + (aforoNorm * 0.35) + (volNorm * 0.25);
+    return Math.round(puntaje * 100);
+}
+
+// --- SEMÁFORO INTELIGENTE ---
+function obtenerSemaforoIPU(ipu) {
+    if (ipu >= 70) return { color: "#E30052", etiqueta: "Prioridad Crítica", icono: "🔴" };
+    if (ipu >= 40) return { color: "#FF9500", etiqueta: "Prioridad Media", icono: "🟠" };
+    return { color: "#007AFF", etiqueta: "Prioridad Baja", icono: "🔵" };
 }
 
 // Cargar datos
@@ -68,18 +76,20 @@ function actualizarDashboard(filtroAlcaldia = null) {
         statsAlcaldias[alc].cantidad++;
         statsAlcaldias[alc].costo += (row.costo_reparacion || 0);
 
-        // Obtenemos color y etiqueta traducida al español
-        let detalles = obtenerDetallesVia(row.tipo_via);
+        // APLICAMOS EL CÁLCULO IPU A CADA BACHE
+        let ipuCalculado = calcularIPU(row.aforo_estimado, row.volumen_m3, row.tipo_via);
+        let semaforo = obtenerSemaforoIPU(ipuCalculado);
 
         let marker = L.circleMarker([row.latitud, row.longitud], {
             radius: filtroAlcaldia ? 6 : 5, 
-            fillColor: detalles.color, 
+            fillColor: semaforo.color, 
             color: "transparent", 
             fillOpacity: 0.9 
         }).bindPopup(`
             <div style="font-family: Inter;">
                 <strong>Folio:</strong> ${row.id_folio}<br>
-                <strong>Vía:</strong> <span style="color:${detalles.color}; font-weight:bold;">${detalles.label}</span><br>
+                <strong>SIPA:</strong> <span style="color:${semaforo.color}; font-weight:bold;">${semaforo.icono} ${semaforo.etiqueta}</span><br>
+                <strong>IPU:</strong> ${ipuCalculado} / 100<br>
                 <strong>Costo APU:</strong> ${formatoMoneda.format(row.costo_reparacion)}
             </div>
         `);
@@ -169,3 +179,43 @@ btnMapa.addEventListener('click', () => {
     vistaMapa.classList.add('active'); vistaResumen.classList.remove('active');
     panelLateral.classList.add('compact');
 });
+
+// --- LEYENDA NATIVA DE LEAFLET (SEGURO CONTRA BLOQUEOS) ---
+const leyendaIPU = L.control({ position: 'bottomright' });
+
+leyendaIPU.onAdd = function (map) {
+    let div = L.DomUtil.create('div', 'info legend');
+    
+    // Evita que hacer clic en la leyenda mueva el mapa por accidente
+    L.DomEvent.disableClickPropagation(div);
+    
+    // Estilos inyectados con JavaScript (sin necesidad de tocar style.css)
+    div.style.backgroundColor = "rgba(255, 255, 255, 0.95)";
+    div.style.padding = "15px";
+    div.style.borderRadius = "12px";
+    div.style.boxShadow = "0 4px 15px rgba(0,0,0,0.15)";
+    div.style.fontFamily = "'Inter', sans-serif";
+    div.style.border = "1px solid rgba(0,0,0,0.05)";
+    
+    div.innerHTML = `
+        <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 700; color: #111;">Prioridad IPU</h4>
+        
+        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+            <span style="background: #E30052; width: 16px; height: 16px; border-radius: 50%; margin-right: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;"></span>
+            <span style="font-size: 13px; color: #444; font-weight: 500;">Crítica (≥70)</span>
+        </div>
+        
+        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+            <span style="background: #FF9500; width: 16px; height: 16px; border-radius: 50%; margin-right: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;"></span>
+            <span style="font-size: 13px; color: #444; font-weight: 500;">Media (40 - 69)</span>
+        </div>
+        
+        <div style="display: flex; align-items: center;">
+            <span style="background: #007AFF; width: 16px; height: 16px; border-radius: 50%; margin-right: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: inline-block;"></span>
+            <span style="font-size: 13px; color: #444; font-weight: 500;">Baja (< 40)</span>
+        </div>
+    `;
+    return div;
+};
+
+leyendaIPU.addTo(map);
